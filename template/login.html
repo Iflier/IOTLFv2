@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Login</title>
+        <link rel="stylesheet" type="text/css" href='{{static_url("css/login.css")}}'/>
+         <!-- <link rel="stylesheet" type="text/css" href="../static/css/login.css"/>   -->
+    </head>
+    <body>
+        <div id="login">
+            <h1>Login</h1>
+            <form method="post">
+                {% module xsrf_form_html() %}
+                <input type="text" required="required" placeholder="用户名" name="username" autofocus="autofocus"/>
+                <input type="password" required="required" placeholder="密码" name="password"/>
+                <button id="ok" class="but" type="submit">登陆</button>
+            </form>
+            <br/>
+        </div>
+    </body>
+</html>

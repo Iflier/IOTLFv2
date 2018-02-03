@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>Welcome</title>
+        <link rel="stylesheet" type="text/css" href="{{static_url('css/welcome.css')}}">
+        <link rel="stylesheet" type="text/css" href="{{static_url('layui/css/layui.css')}}">
+        <!-- <link rel="stylesheet" href="../static/css/layui.css"/> -->
+        <!-- <link rel="stylesheet" type="text/css" href="../static/css/welcome.css"/> -->
+        <script src="../static/js/jquery-3.2.1.js"></script>
+        <script src="{{static_url('layui/layui.js')}}"></script>
+        <script>
+        //一般直接写在一个js文件中
+        layui.use(['layer', 'form'], function(){
+            var layer = layui.layer ,form = layui.form;
+        });
+        </script>
+        <script type="text/javascript" language="javascript">
+            window.onload = function(){
+            m = document.getElementById("music");
+            m.volume = 0.3;
+            }
+        </script>
+        
+        <script type="text/javascript" language="javascript">
+        function getCookie(name){
+                var c = document.cookie.match("\\b" + name + "=([^;]*)\\b");
+                return c ? c[1]: undefined;
+            };
+        </script>
+        <script type="text/javascript" language="javascript">
+        function rpmChange(){
+            // 先修改#rpmValue的内容，然后提交这个元素的值
+            var newRPM = document.getElementById("rpm").value;
+            document.getElementById("rpmValue").innerHTML = newRPM;
+            $("#rpm").attr("value", newRPM);
+            // console.log("Happy.");
+            $.ajaxSetup({
+                data: {_xsrf: getCookie('_xsrf')},
+                });
+            $.ajax({
+                type: "POST",
+                url: '/fan/',
+                data: {
+                    fanSpeed: newRPM,
+                    },
+                success: function(data){                    
+                    //document.getElementById("rpmValue").innerHTML = newRPM;
+                    //$("#rpm").attr("value", newRPM);
+                    layer.msg(
+                            'Successed!',
+                            {
+                                time: 600,
+                                icon: 6,
+                                shade: 0.3
+                            }
+                    );
+                    location.href = "http://localhost:11000/";
+                    }
+                });
+            };
+
+        function showTipsOnFan(){
+            layer.tips("此为暴力风扇，最大转速10000+ RPM，小心你的手指头哦", "#rpm",{
+                tips: [1, "#3595CC"],
+                time: 1600
+            });
+        };
+        </script>
+
+        <script type="text/javascript" language="javascript">
+            function ledStatusUpdate(elemId){
+                // alert("GSWHF");
+                $.ajaxSetup({
+                    data: {_xsrf: getCookie('_xsrf')},
+                    });
+                $.ajax({
+                    type: "POST",
+                    url: '/led/',
+                    data: {
+                        ledStatus: $('#' + elemId).val(),
+                        },
+                    success: function(data){
+                        layer.msg(
+                            'Successed!',
+                            {
+                                time: 600,
+                                icon: 1,
+                                shade: 0.3
+                            }
+                        );
+                        location.href = "http://localhost:11000/";
+                    }
+                });
+            };
+            
+        </script>
+    </head>
+    <body>
+        <div class="head">
+            <h2 style="clear:left;">欢迎登录</h2><br>
+            <h3>您好，亲爱的&nbsp;&nbsp;{{username}}&nbsp;&nbsp;用户，您是第&nbsp <b>{{times}}</b>&nbsp 位访客.</h3>
+            <a style="float:right; font-size: 15px;" href="/logout/">退出登录<i class="layui-icon" style="font-size: 25px; color: #1E9FFF;">&#xe609;</i></a>
+        </div>
+        <div id="mainContent">
+            <h1>便捷导航</h1><br/>
+            <h2>门户网站</h2>
+            <section>
+                <a href="http://www.firefoxchina.cn/">火狐中文网</a>
+                <a href="http://music.163.com/">网易云音乐</a>                        
+                <a href="http://news.sina.com.cn/">新浪新闻</a>
+                <a href="http://www.xinhuanet.com/">新华网</a>
+                <a href="http://www.163.com/">网易</a>
+                <a href="https://www.zhihu.com/">知乎</a>
+            </section><br/>
+            <section>
+                <h2>音乐欣赏</h2>
+                <audio src="../static/musics/lakemonth.mp3" id="music" loop="loop" oncontextmenu="return false"
+                controls="controls" preload="auto" controlslist="nodownload">抱歉，你的浏览器不支持该元素.
+                </audio>
+            </section>
+        </div>
+        <div class="functionArea">
+            <form method="post">
+                {% module xsrf_form_html() %}
+                <label style="text-align:left;"><strong>LED</strong>状态</label><br>
+                <input type="radio" id="statusOFF" name="ledSwitch" value="OFF" required="required" onclick="ledStatusUpdate($(this).attr('id'));"/>关灯
+                <input type="radio" id="statusON" name="ledSwitch" value="ON" onclick="ledStatusUpdate($(this).attr('id'));"/>开灯<br/><br/>
+            </form>
+            <hr class="layui-bg-green">
+            <form method="post" class="layui-form">
+                {% module xsrf_form_html() %}
+                FAN转速控制<br/>
+                <input type="range" min="0" max="100" step="5" id="rpm" name="fanSpeed" defaultValue=0 onmouseup="rpmChange();" onmouseover="showTipsOnFan();"/>
+                <span id="rpmValue"></span><span>%</span>
+                <br/><br/>
+            </form>
+        </div>
+        {% if isinstance(fanSpeed, str) %}
+        <script type="text/javascript" language="javascript">
+            // 有点重复，否则滑块位置会回到中间
+            document.getElementById("rpmValue").innerHTML = {{fanSpeed}};
+            $("#rpm").attr("value", {{fanSpeed}});
+        </script>
+        {% else %}
+        <script type="text/javascript" language="javascript">
+            document.getElementById("rpmValue").innerHTML = "0";
+            $("#rpm").removeAttr("value");
+        </script>
+        {% end %}
+
+        {% if ledStatus == "ON" %}
+        <script type="text/javascript" language="javascript">
+            // alert("Value of ledStatus: ON");
+            $("#statusON").attr("checked", "checked");
+            $("#statusOFF").removeAttr("checked");
+        </script>
+        {% elif ledStatus == "OFF" %}
+        <script type="text/javascript" language="javascript">
+            // alert("Value of ledStgatus: OFF");
+            $("#statusON").removeAttr("checked");
+            $("#statusOFF").attr("checked", "checked");
+        </script>
+        {% else %}
+        <script type="text/javascript" language="javascript">
+            $("#statusON").removeAttr("checked");
+            $("#statusOFF").attr("checked", "checked");
+        </script>
+        {% end %}
+        <footer class="layui-bg-blue">
+            <p>版权所有 &copy 2017 - 2018</p>
+        </footer>
+    </body>
+</html>
