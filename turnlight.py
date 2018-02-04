@@ -103,6 +103,14 @@ class BaseHandler(tornado.web.RequestHandler):
             self.render("verboseNotAllowed.html")            
         else:
             self.write("Error: {0}".format(status_code))
+    
+    def get_current_user(self):
+        # print("Type of get_secure_cookie: {0}".format(self.get_secure_cookie("username")))
+        # 字节字符串
+        username = self.get_secure_cookie('username')
+        if isinstance(username, bytes):
+            return username.decode(encoding='utf-8')
+        return None
 
 
 class DeviceHandler(BaseHandler):
@@ -115,14 +123,6 @@ class DeviceHandler(BaseHandler):
 
 
 class EnterHandler(BaseHandler):
-    def get_current_user(self):
-        # print("Type of get_secure_cookie: {0}".format(self.get_secure_cookie("username")))
-        # 字节字符串
-        username = self.get_secure_cookie('username')
-        if isinstance(username, bytes):
-            return username.decode(encoding='utf-8')
-        return None
-
     @tornado.web.authenticated
     def get(self):
         """只有已经认证的用户在重新打开窗口时才会被重定向到欢迎页面，否则为login_url键指定的url"""
@@ -222,60 +222,33 @@ class WelcomeHandler(BaseHandler):
             self.set_header('Content-Type', 'text/html')
             self.redirect("/login")
 
-    def post(self):
-        # 检查操作者是否登录
-        # 当POST处理完成后，也算是请求结束，会执行on_finish函数
-        username = self.get_secure_cookie("username", None)
-        if username is None:
-            # 如果是未登录的用户恶意操作
-            self.redirect("/login")
-        else:
-            ledStatus = self.get_argument("ledSwitch", "OFF")
-            fanSpeed = self.get_argument("fanSpeed", "20")
-            # print("Type of fanSpeed: {0}".format(type(fanSpeed)))  # 是 str
-            # print(ledStatus)
-            print("Got fan speed: {0}".format(fanSpeed))
-            print("Write: {0}".format((ledStatus + ',' + fanSpeed + ';')))
-            bytes_count = self.board.write((ledStatus + ',' + fanSpeed + ';').encode(encoding='utf_8'))
-            print("Writen {0:>02,d} bytes.".format(bytes_count))
-            self.cacheDB.set("ledStatus", ledStatus)
-            self.cacheDB.set("fanSpeed", fanSpeed)
-            # print("ledStatus: {0}".format(ledStatus))
-            self.redirect("/welcome")
-    
     def on_finish(self):
         print("本次请求结束，访问人数为：{0}".format(self.cacheDB.get("iotUsers")))
 
 
 class FanHandler(DeviceHandler):
+    @tornado.web.authenticated
     def post(self):
-        username = self.get_secure_cookie("username", None)
-        if username is None:
-            self.redirect("/login")
-        else:
-            ledStatus = self.cacheDB.get("ledStatus")
-            fanSpeed = self.request.arguments.get('fanSpeed')[0].decode()
-            print("fanSpeed: {0}".format(fanSpeed))
-            bytes_count = self.board.write((ledStatus + ',' + fanSpeed + ';').encode(encoding='utf_8'))
-            print("Writen {0:>02,d} bytes.".format(bytes_count))
-            self.cacheDB.set("fanSpeed", fanSpeed)
-            self.write(json.dumps({'status': 'ok'}))
+        ledStatus = self.cacheDB.get("ledStatus")
+        fanSpeed = self.request.arguments.get('fanSpeed')[0].decode()
+        print("fanSpeed: {0}".format(fanSpeed))
+        bytes_count = self.board.write((ledStatus + ',' + fanSpeed + ';').encode(encoding='utf_8'))
+        print("Writen {0:>02,d} bytes.".format(bytes_count))
+        self.cacheDB.set("fanSpeed", fanSpeed)
+        self.write(json.dumps({'status': 'ok'}))
 
 
 class LedHandler(DeviceHandler):
+    @tornado.web.authenticated
     def post(self):
-        username = self.get_secure_cookie("username", None)
-        if username is None:
-            self.redirect("/login")
-        else:
-            fanSpeed = self.cacheDB.get("fanSpeed")
-            ledStatus = self.request.arguments.get('ledStatus')[0].decode()
-            # print("Requests: {0}".format(self.request.arguments.get('ledStatus')))
-            print("In LedHandler, ledStatus: {0}".format(ledStatus))
-            bytes_count = self.board.write((ledStatus + ',' + fanSpeed + ';').encode(encoding='utf_8'))
-            print("Writen {0:>02,d} bytes.".format(bytes_count))
-            self.cacheDB.set("ledStatus", ledStatus)
-            self.write(json.dumps({'status': 'ok'}))
+        fanSpeed = self.cacheDB.get("fanSpeed")
+        ledStatus = self.request.arguments.get('ledStatus')[0].decode()
+        # print("Requests: {0}".format(self.request.arguments.get('ledStatus')))
+        print("In LedHandler, ledStatus: {0}".format(ledStatus))
+        bytes_count = self.board.write((ledStatus + ',' + fanSpeed + ';').encode(encoding='utf_8'))
+        print("Writen {0:>02,d} bytes.".format(bytes_count))
+        self.cacheDB.set("ledStatus", ledStatus)
+        self.write(json.dumps({'status': 'ok'}))
 
 
 class LogoutHandler(BaseHandler):
@@ -285,7 +258,6 @@ class LogoutHandler(BaseHandler):
 
     def get(self):
         self.clear_cookie("username")
-        # self.cacheDB.set("iotUsers", 1)
         self.redirect("/login")
 
 
